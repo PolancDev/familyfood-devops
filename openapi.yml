@@ -1,0 +1,820 @@
+openapi: 3.0.3
+info:
+  title: FamilyFood API
+  description: API para la gestión de planificación de comidas familiares
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/api
+    description: Servidor de desarrollo
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        mensaje:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        nombre:
+          type: string
+
+    Preferences:
+      type: object
+      properties:
+        ingredientesNoDeseados:
+          type: array
+          items:
+            type: string
+        tiposDieta:
+          type: array
+          items:
+            type: string
+        alergias:
+          type: array
+          items:
+            type: string
+        frecuenciaAlimentos:
+          type: object
+        nivelCocina:
+          type: string
+          enum: [BASICO, MEDIO, AVANZADO]
+
+    FamilyMember:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nombre:
+          type: string
+        tipo:
+          type: string
+          enum: [PADRE, MADRE, HIJO, ABUELO]
+
+    Ingredient:
+      type: object
+      properties:
+        nombre:
+          type: string
+        cantidad:
+          type: number
+        unidad:
+          type: string
+
+    Recipe:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nombre:
+          type: string
+        descripcion:
+          type: string
+        tiempoMinutos:
+          type: integer
+        raciones:
+          type: integer
+        ingredientes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ingredient'
+        pasos:
+          type: array
+          items:
+            type: string
+        etiquetas:
+          type: array
+          items:
+            type: string
+        imagen:
+          type: string
+        favorita:
+          type: boolean
+
+    DayPlan:
+      type: object
+      properties:
+        dia:
+          type: string
+        receta:
+          $ref: '#/components/schemas/Recipe'
+        tipo:
+          type: string
+        estado:
+          type: string
+
+    WeeklyPlan:
+      type: object
+      properties:
+        semana:
+          type: string
+        dias:
+          type: array
+          items:
+            $ref: '#/components/schemas/DayPlan'
+
+    ShoppingItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ingrediente:
+          type: string
+        cantidad:
+          type: number
+        unidad:
+          type: string
+        categoria:
+          type: string
+        comprado:
+          type: boolean
+        recetasOrigen:
+          type: array
+          items:
+            type: string
+
+    ShoppingList:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        semana:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShoppingItem'
+        categorias:
+          type: array
+          items:
+            type: string
+
+    AuthLoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      summary: Registro de nuevo usuario
+      tags:
+        - Autenticacion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - nombre
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+                nombre:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Bad Request
+
+  /auth/login:
+    post:
+      summary: Inicio de sesion
+      tags:
+        - Autenticacion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /usuario:
+    get:
+      summary: Obtener perfil del usuario autenticado
+      tags:
+        - Usuario
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  email:
+                    type: string
+                  nombre:
+                    type: string
+                  preferencias:
+                    $ref: '#/components/schemas/Preferences'
+                  miembros:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FamilyMember'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Actualizar perfil y preferencias
+      tags:
+        - Usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                preferencias:
+                  $ref: '#/components/schemas/Preferences'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /usuario/miembros:
+    post:
+      summary: Anadir miembro a la familia
+      tags:
+        - Usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FamilyMember'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyMember'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /recetas:
+    get:
+      summary: Listar todas las recetas
+      tags:
+        - Recetas
+      parameters:
+        - name: favoritas
+          in: query
+          schema:
+            type: boolean
+        - name: busqueda
+          in: query
+          schema:
+            type: string
+        - name: etiqueta
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recetas:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Recipe'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Crear receta propia
+      tags:
+        - Recetas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Recipe'
+      responses:
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /recetas/{id}:
+    get:
+      summary: Obtener detalle de una receta
+      tags:
+        - Recetas
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipe'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Actualizar receta
+      tags:
+        - Recetas
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Recipe'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Eliminar receta
+      tags:
+        - Recetas
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /recetas/{id}/favorita:
+    post:
+      summary: Marcar/desmarcar como favorita
+      tags:
+        - Recetas
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /plan-semanal:
+    get:
+      summary: Obtener plan semanal actual
+      tags:
+        - PlanSemanal
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklyPlan'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Guardar plan semanal
+      tags:
+        - PlanSemanal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dias:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/DayPlan'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /plan-semanal/dia/{dia}:
+    put:
+      summary: Actualizar un dia especifico
+      tags:
+        - PlanSemanal
+      parameters:
+        - name: dia
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DayPlan'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /plan-semanal/generar:
+    post:
+      summary: Generar menu automatico
+      tags:
+        - PlanSemanal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                numeroPersonas:
+                  type: integer
+                recetasExcluidas:
+                  type: array
+                  items:
+                    type: string
+                preferenciasUsar:
+                  type: boolean
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lista-compra:
+    get:
+      summary: Obtener lista de compra activa
+      tags:
+        - ListaCompra
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShoppingList'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lista-compra/generar:
+    post:
+      summary: Generar lista de compra desde plan semanal
+      tags:
+        - ListaCompra
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                raciones:
+                  type: integer
+                incluirBasicos:
+                  type: boolean
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lista-compra/items/{id}:
+    put:
+      summary: Marcar item como comprado
+      tags:
+        - ListaCompra
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comprado:
+                  type: boolean
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Eliminar item
+      tags:
+        - ListaCompra
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lista-compra/items:
+    post:
+      summary: Anadir item manualmente
+      tags:
+        - ListaCompra
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ingrediente
+                - cantidad
+                - unidad
+              properties:
+                ingrediente:
+                  type: string
+                cantidad:
+                  type: number
+                unidad:
+                  type: string
+      responses:
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /lista-compra/exportar:
+    get:
+      summary: Exportar lista a PDF/WhatsApp
+      tags:
+        - ListaCompra
+      parameters:
+        - name: formato
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /panico/sugerencias:
+    get:
+      summary: Obtener sugerencias rapidas
+      tags:
+        - Panico
+      parameters:
+        - name: tiempoMaximo
+          in: query
+          schema:
+            type: integer
+        - name: usarSobras
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notificaciones/stream:
+    get:
+      summary: Conexion SSE para notificaciones en tiempo real
+      tags:
+        - Notificaciones
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
